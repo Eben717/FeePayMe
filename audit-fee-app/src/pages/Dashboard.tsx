@@ -7,7 +7,7 @@ import { AuditFeeRecord } from '../types/AuditFee';
 import { DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-    const { fees, pay70Percent, pay30Percent } = useAuditFees();
+    const { fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent } = useAuditFees();
     const [selectedRecord, setSelectedRecord] = useState<AuditFeeRecord | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -37,6 +37,14 @@ const Dashboard: React.FC = () => {
 
     const handlePay30 = (id: string) => {
         pay30Percent(id);
+    };
+
+    const handleUnpay70 = (id: string) => {
+        unpay70Percent(id);
+    };
+
+    const handleUnpay30 = (id: string) => {
+        unpay30Percent(id);
     };
 
     return (
@@ -97,6 +105,8 @@ const Dashboard: React.FC = () => {
                 record={selectedRecord}
                 onPay70={handlePay70}
                 onPay30={handlePay30}
+                onUnpay70={handleUnpay70}
+                onUnpay30={handleUnpay30}
             />
         </DashboardLayout>
     );

@@ -6,6 +6,8 @@ interface AuditFeeContextType {
     fees: AuditFeeRecord[];
     pay70Percent: (id: string) => void;
     pay30Percent: (id: string) => void;
+    unpay70Percent: (id: string) => void;
+    unpay30Percent: (id: string) => void;
 }
 
 const AuditFeeContext = createContext<AuditFeeContextType | undefined>(undefined);
@@ -42,8 +44,37 @@ export const AuditFeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         }));
     };
 
+    const unpay70Percent = (id: string) => {
+        setFees(prevFees => prevFees.map(fee => {
+            // Can only unpay 70% if 30% has not been paid
+            if (fee.id === id && fee.paymentStatus === '70% Paid') {
+                return {
+                    ...fee,
+                    payment70Status: 'Pending',
+                    paymentStatus: 'Pending' as const,
+                    paymentDate: undefined
+                };
+            }
+            return fee;
+        }));
+    };
+
+    const unpay30Percent = (id: string) => {
+        setFees(prevFees => prevFees.map(fee => {
+            if (fee.id === id && fee.paymentStatus === 'Fully Paid') {
+                return {
+                    ...fee,
+                    payment30Status: 'Pending',
+                    paymentStatus: '70% Paid' as const,
+                    // Keep the original 70% payment date or set it to a new one if needed, but for now we won't clear it.
+                };
+            }
+            return fee;
+        }));
+    };
+
     return (
-        <AuditFeeContext.Provider value={{ fees, pay70Percent, pay30Percent }}>
+        <AuditFeeContext.Provider value={{ fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent }}>
             {children}
         </AuditFeeContext.Provider>
     );

@@ -8,9 +8,11 @@ interface PaymentModalProps {
     record: AuditFeeRecord | null;
     onPay70: (id: string) => void;
     onPay30: (id: string) => void;
+    onUnpay70: (id: string) => void;
+    onUnpay30: (id: string) => void;
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, record, onPay70, onPay30 }) => {
+const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, record, onPay70, onPay30, onUnpay70, onUnpay30 }) => {
     if (!isOpen || !record) return null;
 
     const totalPayable = record.netPay;
@@ -50,7 +52,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, record, on
                             <p className="text-sm text-secondary">{formatCurrency(pay70Amount)}</p>
                         </div>
                         {record.payment70Status === 'Paid' ? (
-                            <span className="flex items-center text-success text-sm font-semibold" style={{ display: 'flex', alignItems: 'center', color: 'var(--success)', fontSize: '0.875rem', fontWeight: 600 }}><CheckCircle size={16} className="mr-1" style={{ marginRight: '0.25rem' }} /> Paid</span>
+                            <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span className="flex items-center text-success text-sm font-semibold" style={{ display: 'flex', alignItems: 'center', color: 'var(--success)', fontSize: '0.875rem', fontWeight: 600 }}>
+                                    <CheckCircle size={16} className="mr-1" style={{ marginRight: '0.25rem' }} /> Paid
+                                </span>
+                                {record.paymentStatus !== 'Fully Paid' && (
+                                    <button
+                                        onClick={() => { onUnpay70(record.id); onClose(); }}
+                                        className="text-xs border border-danger text-danger rounded px-2 py-1 hover:bg-danger hover:text-white transition-colors"
+                                        style={{ fontSize: '0.75rem', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                    >
+                                        Undo
+                                    </button>
+                                )}
+                            </div>
                         ) : (
                             <button
                                 onClick={() => { onPay70(record.id); onClose(); }}
@@ -70,7 +85,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, record, on
                             <p className="text-sm text-secondary">{formatCurrency(pay30Amount)}</p>
                         </div>
                         {record.payment30Status === 'Paid' ? (
-                            <span className="flex items-center text-success text-sm font-semibold" style={{ display: 'flex', alignItems: 'center', color: 'var(--success)', fontSize: '0.875rem', fontWeight: 600 }}><CheckCircle size={16} className="mr-1" style={{ marginRight: '0.25rem' }} /> Paid</span>
+                            <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span className="flex items-center text-success text-sm font-semibold" style={{ display: 'flex', alignItems: 'center', color: 'var(--success)', fontSize: '0.875rem', fontWeight: 600 }}>
+                                    <CheckCircle size={16} className="mr-1" style={{ marginRight: '0.25rem' }} /> Paid
+                                </span>
+                                <button
+                                    onClick={() => { onUnpay30(record.id); onClose(); }}
+                                    className="text-xs border border-danger text-danger rounded px-2 py-1 hover:bg-danger hover:text-white transition-colors"
+                                    style={{ fontSize: '0.75rem', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', background: 'transparent', cursor: 'pointer' }}
+                                >
+                                    Undo
+                                </button>
+                            </div>
                         ) : (
                             <button
                                 onClick={() => { onPay30(record.id); onClose(); }}

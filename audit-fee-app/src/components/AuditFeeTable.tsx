@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuditFees } from '../context/AuditFeeContext';
 import { AuditFeeRecord } from '../types/AuditFee';
 
@@ -8,6 +8,15 @@ interface Props {
 
 const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
     const { fees } = useAuditFees();
+    const [selectedProject, setSelectedProject] = useState<string>('All');
+
+    // Get unique list of projects
+    const uniqueProjects = Array.from(new Set(fees.map(fee => fee.project))).sort();
+
+    // Filter fees based on the selected project
+    const filteredFees = selectedProject === 'All'
+        ? fees
+        : fees.filter(fee => fee.project === selectedProject);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -24,7 +33,30 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                 <thead className="bg-[#f1f5f9] text-secondary text-sm font-semibold" style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
                     <tr>
                         <th className="p-4" style={{ padding: '1rem' }}>Auditor</th>
-                        <th className="p-4" style={{ padding: '1rem' }}>Project</th>
+                        <th className="p-4" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            Project
+                            <select
+                                value={selectedProject}
+                                onChange={(e) => setSelectedProject(e.target.value)}
+                                style={{
+                                    padding: '0.2rem 0.5rem',
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-main)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'normal',
+                                    marginLeft: '0.5rem',
+                                    outline: 'none',
+                                    maxWidth: '150px'
+                                }}
+                            >
+                                <option value="All">All Projects</option>
+                                {uniqueProjects.map(project => (
+                                    <option key={project} value={project}>{project}</option>
+                                ))}
+                            </select>
+                        </th>
                         <th className="p-4" style={{ padding: '1rem' }}>Net Pay (GHC)</th>
                         <th className="p-4" style={{ padding: '1rem' }}>70% Payment</th>
                         <th className="p-4" style={{ padding: '1rem' }}>30% Payment</th>
@@ -33,7 +65,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                     </tr>
                 </thead>
                 <tbody className="text-sm" style={{ fontSize: '0.875rem' }}>
-                    {fees.map((fee) => (
+                    {filteredFees.map((fee) => (
                         <tr key={fee.id} className="hover:bg-background transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
                             <td className="p-4 font-medium text-main" style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-main)' }}>{fee.auditorName}</td>
                             <td className="p-4 text-secondary" style={{ padding: '1rem', color: 'var(--secondary)' }}>{fee.project}</td>
@@ -64,7 +96,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                             </td>
                         </tr>
                     ))}
-                    {fees.length === 0 && (
+                    {filteredFees.length === 0 && (
                         <tr>
                             <td colSpan={7} className="p-8 text-center text-muted" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No audit fees found.</td>
                         </tr>
