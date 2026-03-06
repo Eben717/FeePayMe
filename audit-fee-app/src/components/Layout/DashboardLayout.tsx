@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, BarChart2, LogOut } from 'lucide-react';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -17,7 +17,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: FileText, label: 'Audit Fees', path: '/dashboard' },
-        // { icon: Settings, label: 'Settings', path: '/settings' }, // hidden for now
+        { icon: BarChart2, label: 'Reports', path: '/reports' },
     ];
 
     return (

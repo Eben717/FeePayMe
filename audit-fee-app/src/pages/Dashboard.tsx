@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/Layout/DashboardLayout';
 import AuditFeeTable from '../components/AuditFeeTable';
 import PaymentModal from '../components/PaymentModal';
 import { useAuditFees } from '../context/AuditFeeContext';
 import { AuditFeeRecord } from '../types/AuditFee';
-import { DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { DollarSign, AlertCircle, CheckCircle2, BarChart2 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
+    const navigate = useNavigate();
     const { fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent } = useAuditFees();
     const [selectedRecord, setSelectedRecord] = useState<AuditFeeRecord | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -95,6 +97,12 @@ const Dashboard: React.FC = () => {
 
             <div className="mb-4 flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 className="text-xl font-bold text-main" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Audit Fee Table</h2>
+                <button
+                    onClick={() => navigate('/reports')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', backgroundColor: 'var(--primary)', color: 'white', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                    <BarChart2 size={16} /> Generate Report
+                </button>
             </div>
 
             <AuditFeeTable onProcessPayment={handleProcessPayment} />

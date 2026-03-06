@@ -192,6 +192,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                                 type="number"
                                 placeholder="FX Rate"
                                 value={newFxRate}
+                                step="any"
                                 onChange={(e) => setNewFxRate(parseFloat(e.target.value) || '')}
                                 className="w-full"
                                 style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem', width: '80px' }}
