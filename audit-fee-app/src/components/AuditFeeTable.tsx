@@ -7,7 +7,7 @@ interface Props {
 }
 
 const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
-    const { fees, addFee } = useAuditFees();
+    const { fees, addFee, removeFee, updateFee } = useAuditFees();
     const [selectedProject, setSelectedProject] = useState<string>('All');
 
     // New Record State
@@ -17,6 +17,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
     const [newCurrency, setNewCurrency] = useState('USD');
     const [newAmount, setNewAmount] = useState<number | ''>('');
     const [newFxRate, setNewFxRate] = useState<number | ''>('');
+    const [newWhtRate, setNewWhtRate] = useState<number | ''>(7.5);
 
     const handleAddFee = () => {
         if (!newAuditor || !newProject || newAmount === '' || newFxRate === '') {
@@ -47,7 +48,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
             totalAmountDue: Number(newAmount),
             roe: Number(newFxRate),
             contractNum: `NEW-${Date.now().toString().slice(-4)}`,
-            whtRate: 7.5, // Default WHT Rate
+            whtRate: Number(newWhtRate) || 7.5,
         });
 
         // Reset form
@@ -57,6 +58,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
         setNewCurrency('USD');
         setNewAmount('');
         setNewFxRate('');
+        setNewWhtRate(7.5);
     };
 
     // Get unique list of projects
@@ -74,6 +76,18 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
             case 'Fully Paid': return 'badge badge-success';
             default: return 'badge badge-secondary';
         }
+    };
+
+    // Normalise any date string to dd/mm/yyyy for display.
+    // Handles ISO format (yyyy-mm-dd from <input type="date">) and pre-existing dd/mm/yyyy values.
+    const formatDate = (dateStr?: string): string => {
+        if (!dateStr) return 'N/A';
+        // Already in dd/mm/yyyy format (legacy mock / localStorage data)
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+        // Convert yyyy-mm-dd → dd/mm/yyyy (from HTML date input)
+        const parts = dateStr.split('-');
+        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        return dateStr;
     };
 
     return (
@@ -184,7 +198,20 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                             />
                         </td>
                         <td className="p-4 text-muted italic" style={{ padding: '1rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Auto</td>
-                        <td className="p-4 text-muted italic" style={{ padding: '1rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>7.5%</td>
+                        <td className="p-4" style={{ padding: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <input
+                                    type="number"
+                                    value={newWhtRate}
+                                    min={0}
+                                    max={100}
+                                    step={0.5}
+                                    onChange={(e) => setNewWhtRate(parseFloat(e.target.value) || '')}
+                                    style={{ width: '55px', padding: '0.3rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none', fontSize: '0.875rem', textAlign: 'right' }}
+                                />
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>%</span>
+                            </div>
+                        </td>
                         <td className="p-4 text-muted italic" style={{ padding: '1rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Auto</td>
                         <td className="p-4 text-muted italic" style={{ padding: '1rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Auto</td>
                         <td className="p-4 text-muted italic" style={{ padding: '1rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Pending</td>
@@ -207,12 +234,25 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                         <tr key={fee.id} className="hover:bg-background transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
                             <td className="p-4 font-medium text-main" style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-main)' }}>{fee.auditorName}</td>
                             <td className="p-4 text-secondary" style={{ padding: '1rem', color: 'var(--secondary)' }}>{fee.project}</td>
-                            <td className="p-4" style={{ padding: '1rem' }}>{fee.auditStartDate || 'N/A'}</td>
+                            <td className="p-4" style={{ padding: '1rem' }}>{formatDate(fee.auditStartDate)}</td>
                             <td className="p-4" style={{ padding: '1rem' }}>{fee.currency || 'USD'}</td>
                             <td className="p-4" style={{ padding: '1rem' }}>{fee.totalAmountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                             <td className="p-4" style={{ padding: '1rem' }}>{fee.roe}</td>
                             <td className="p-4" style={{ padding: '1rem' }}>{fee.cediEquivalent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            <td className="p-4" style={{ padding: '1rem' }}>{fee.whtRate}%</td>
+                            <td className="p-4" style={{ padding: '0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                    <input
+                                        type="number"
+                                        value={fee.whtRate}
+                                        min={0}
+                                        max={100}
+                                        step={0.5}
+                                        onChange={(e) => updateFee(fee.id, { whtRate: parseFloat(e.target.value) || 0 })}
+                                        style={{ width: '55px', padding: '0.3rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none', fontSize: '0.875rem', textAlign: 'right' }}
+                                    />
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>%</span>
+                                </div>
+                            </td>
                             <td className="p-4" style={{ padding: '1rem' }}>{fee.withholdingTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                             <td className="p-4 font-semibold text-main" style={{ padding: '1rem', fontWeight: 600 }}>{fee.netPay.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                             <td className="p-4" style={{ padding: '1rem' }}>
@@ -229,15 +269,26 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                                 <span className={getStatusBadge(fee.paymentStatus)}>{fee.paymentStatus}</span>
                             </td>
                             <td className="p-4 text-center" style={{ padding: '1rem', textAlign: 'center' }}>
-                                <button
-                                    onClick={() => onProcessPayment(fee)}
-                                    className="btn btn-outline btn-sm"
-                                    style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '0.375rem', cursor: 'pointer', background: 'transparent' }}
-                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
-                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                                >
-                                    Process
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                    <button
+                                        onClick={() => onProcessPayment(fee)}
+                                        className="btn btn-outline btn-sm"
+                                        style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '0.375rem', cursor: 'pointer', background: 'transparent' }}
+                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
+                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                    >
+                                        Process
+                                    </button>
+                                    <button
+                                        onClick={() => removeFee(fee.id)}
+                                        className="btn btn-outline btn-sm"
+                                        style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', border: '1px solid var(--error, #ef4444)', color: 'var(--error, #ef4444)', borderRadius: '0.375rem', cursor: 'pointer', background: 'transparent' }}
+                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; }}
+                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     ))}

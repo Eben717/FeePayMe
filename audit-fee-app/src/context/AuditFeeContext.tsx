@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { AuditFeeRecord } from '../types/AuditFee';
-import { initialMockData } from '../data/mockData';
 
 const LOCAL_STORAGE_KEY = 'feePayMe_auditFees_state';
 
@@ -11,6 +10,8 @@ interface AuditFeeContextType {
     unpay70Percent: (id: string) => void;
     unpay30Percent: (id: string) => void;
     addFee: (fee: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>) => void;
+    removeFee: (id: string) => void;
+    updateFee: (id: string, updates: Partial<AuditFeeRecord>) => void;
 }
 
 const AuditFeeContext = createContext<AuditFeeContextType | undefined>(undefined);
@@ -39,7 +40,7 @@ export const AuditFeeProvider: React.FC<{ children: ReactNode }> = ({ children }
                 console.error('Failed to parse fees from localStorage:', e);
             }
         }
-        return initialMockData.map(applyAutoCalculations);
+        return [];
     });
 
     useEffect(() => {
@@ -120,8 +121,21 @@ export const AuditFeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         setFees(prevFees => [applyAutoCalculations(newFee), ...prevFees]);
     };
 
+    const removeFee = (id: string) => {
+        setFees(prevFees => prevFees.filter(fee => fee.id !== id));
+    };
+
+    const updateFee = (id: string, updates: Partial<AuditFeeRecord>) => {
+        setFees(prevFees => prevFees.map(fee => {
+            if (fee.id === id) {
+                return applyAutoCalculations({ ...fee, ...updates });
+            }
+            return fee;
+        }));
+    };
+
     return (
-        <AuditFeeContext.Provider value={{ fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent, addFee }}>
+        <AuditFeeContext.Provider value={{ fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent, addFee, removeFee, updateFee }}>
             {children}
         </AuditFeeContext.Provider>
     );
