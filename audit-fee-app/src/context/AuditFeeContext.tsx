@@ -1,6 +1,8 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { AuditFeeRecord } from '../types/AuditFee';
 import { initialMockData } from '../data/mockData';
+
+const LOCAL_STORAGE_KEY = 'feePayMe_auditFees_state';
 
 interface AuditFeeContextType {
     fees: AuditFeeRecord[];
@@ -8,12 +10,41 @@ interface AuditFeeContextType {
     pay30Percent: (id: string) => void;
     unpay70Percent: (id: string) => void;
     unpay30Percent: (id: string) => void;
+    addFee: (fee: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>) => void;
 }
 
 const AuditFeeContext = createContext<AuditFeeContextType | undefined>(undefined);
 
+const applyAutoCalculations = (fee: AuditFeeRecord): AuditFeeRecord => {
+    const cediEquivalent = fee.totalAmountDue * fee.roe;
+    const withholdingTax = cediEquivalent * (fee.whtRate / 100);
+    const netPay = cediEquivalent - withholdingTax;
+
+    return {
+        ...fee,
+        cediEquivalent,
+        withholdingTax,
+        netPay
+    };
+};
+
 export const AuditFeeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [fees, setFees] = useState<AuditFeeRecord[]>(initialMockData);
+    const [fees, setFees] = useState<AuditFeeRecord[]>(() => {
+        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData) as AuditFeeRecord[];
+                return parsed.map(applyAutoCalculations);
+            } catch (e) {
+                console.error('Failed to parse fees from localStorage:', e);
+            }
+        }
+        return initialMockData.map(applyAutoCalculations);
+    });
+
+    useEffect(() => {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(fees));
+    }, [fees]);
 
     const pay70Percent = (id: string) => {
         setFees(prevFees => prevFees.map(fee => {
@@ -73,8 +104,24 @@ export const AuditFeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         }));
     };
 
+    const addFee = (feeInput: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>) => {
+        const newFee: AuditFeeRecord = {
+            ...feeInput,
+            id: Date.now().toString(),
+            paymentStatus: 'Pending',
+            payment70Status: 'Pending',
+            payment30Status: 'Pending',
+            // Default calculated values (will be overwritten by applyAutoCalculations)
+            cediEquivalent: 0,
+            withholdingTax: 0,
+            netPay: 0,
+        };
+
+        setFees(prevFees => [applyAutoCalculations(newFee), ...prevFees]);
+    };
+
     return (
-        <AuditFeeContext.Provider value={{ fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent }}>
+        <AuditFeeContext.Provider value={{ fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent, addFee }}>
             {children}
         </AuditFeeContext.Provider>
     );

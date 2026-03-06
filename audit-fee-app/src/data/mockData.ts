@@ -21,6 +21,7 @@ export const initialMockData: AuditFeeRecord[] = [
         reportingDays: 1,
         sampleDays: 1,
         totalNoDays: 3,
+        currency: 'EUR',
         totalAmountDue: 290.00,
         roe: 12.4112,
         contractNum: '2026/024/0',
@@ -53,6 +54,7 @@ export const initialMockData: AuditFeeRecord[] = [
         reportingDays: 1,
         sampleDays: 0,
         totalNoDays: 4,
+        currency: 'USD',
         totalAmountDue: 360.00,
         roe: 12.5,
         contractNum: '2026/025/1',
@@ -84,6 +86,7 @@ export const initialMockData: AuditFeeRecord[] = [
         reportingDays: 2,
         sampleDays: 1,
         totalNoDays: 8,
+        currency: 'USD',
         totalAmountDue: 800.00,
         roe: 1, // USD directly for foreign
         contractNum: '2026/026/2',

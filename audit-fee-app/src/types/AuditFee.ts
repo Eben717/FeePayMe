@@ -23,6 +23,7 @@ export interface AuditFeeRecord {
     sampleDays: number;
     totalNoDays: number;
 
+    currency?: string;
     totalAmountDue: number;
     roe: number;
     contractNum: string;
