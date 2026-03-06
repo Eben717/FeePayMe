@@ -9,6 +9,7 @@ export interface AuditFeeRecord {
     serviceDescription: string;
     auditType: string;
     announcedUnannounced: string;
+    auditStartDate?: string; // New field for Audit Start Date
     tonnageHours?: string;
     standard: string;
     locationType: 'Local' | 'Foreign';
