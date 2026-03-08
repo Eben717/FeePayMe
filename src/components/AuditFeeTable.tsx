@@ -120,7 +120,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                                 ))}
                             </select>
                         </th>
-                        <th className="p-4" style={{ padding: '1rem' }}>Audit Start Date</th>
+                        <th className="p-4" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>Audit Start Date</th>
                         <th className="p-4" style={{ padding: '1rem' }}>Currency</th>
                         <th className="p-4" style={{ padding: '1rem' }}>Amount</th>
                         <th className="p-4" style={{ padding: '1rem' }}>FX Rate</th>
@@ -157,7 +157,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                                 style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
                             />
                         </td>
-                        <td className="p-4" style={{ padding: '1rem' }}>
+                        <td className="p-4" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                             <input
                                 type="text"
                                 placeholder="dd/mm/yyyy"
@@ -169,7 +169,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                                     setNewStartDate(val.slice(0, 10));
                                 }}
                                 className="w-full"
-                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem', minWidth: '110px' }}
                             />
                         </td>
                         <td className="p-4" style={{ padding: '1rem' }}>
@@ -241,7 +241,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                         <tr key={fee.id} className="hover:bg-background transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
                             <td className="p-4 font-medium text-main" style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-main)' }}>{fee.auditorName}</td>
                             <td className="p-4 text-secondary" style={{ padding: '1rem', color: 'var(--secondary)' }}>{fee.project}</td>
-                            <td className="p-4" style={{ padding: '1rem' }}>{formatDate(fee.auditStartDate)}</td>
+                            <td className="p-4" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>{formatDate(fee.auditStartDate)}</td>
                             <td className="p-4" style={{ padding: '1rem' }}>{fee.currency || 'USD'}</td>
                             <td className="p-4" style={{ padding: '1rem' }}>{fee.totalAmountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                             <td className="p-4" style={{ padding: '1rem' }}>{fee.roe}</td>
