@@ -159,9 +159,15 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                         </td>
                         <td className="p-4" style={{ padding: '1rem' }}>
                             <input
-                                type="date"
+                                type="text"
+                                placeholder="dd/mm/yyyy"
                                 value={newStartDate}
-                                onChange={(e) => setNewStartDate(e.target.value)}
+                                onChange={(e) => {
+                                    let val = e.target.value.replace(/[^0-9/]/g, '');
+                                    if (val.length === 2 && !val.includes('/') && newStartDate.length <= val.length) val += '/';
+                                    if (val.length === 5 && val.split('/').length === 2 && newStartDate.length <= val.length) val += '/';
+                                    setNewStartDate(val.slice(0, 10));
+                                }}
                                 className="w-full"
                                 style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
                             />
