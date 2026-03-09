@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useAuditFees } from '../context/AuditFeeContext';
 import { AuditFeeRecord } from '../types/AuditFee';
 import SummaryModal from './SummaryModal';
@@ -11,6 +12,15 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
     const { fees, addFee, removeFee, updateFee } = useAuditFees();
     const [selectedProject, setSelectedProject] = useState<string>('All');
     const [summaryRecord, setSummaryRecord] = useState<AuditFeeRecord | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof AuditFeeRecord | null, direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
+
+    const requestSort = (key: keyof AuditFeeRecord) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     // New Record State
     const [newAuditor, setNewAuditor] = useState('');
@@ -71,6 +81,38 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
         ? fees
         : fees.filter(fee => fee.project === selectedProject);
 
+    // Sort the filtered fees
+    const sortedFees = useMemo(() => {
+        let sortableFees = [...filteredFees];
+        if (sortConfig.key !== null) {
+            sortableFees.sort((a, b) => {
+                let valA: any = a[sortConfig.key as keyof AuditFeeRecord] || '';
+                let valB: any = b[sortConfig.key as keyof AuditFeeRecord] || '';
+
+                if (sortConfig.key === 'auditStartDate') {
+                    const parseDate = (d: any) => {
+                        if (typeof d !== 'string' || d === 'N/A') return 0;
+                        if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+                            const [dd, mm, yyyy] = d.split('/');
+                            return new Date(`${yyyy}-${mm}-${dd}`).getTime();
+                        }
+                        return new Date(d).getTime() || 0;
+                    };
+                    valA = parseDate(valA);
+                    valB = parseDate(valB);
+                } else if (typeof valA === 'string' && typeof valB === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+
+                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortableFees;
+    }, [filteredFees, sortConfig]);
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'Pending': return 'badge badge-warning';
@@ -97,9 +139,17 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
             <table className="w-full text-left" style={{ width: '100%', minWidth: '1000px', borderCollapse: 'collapse' }}>
                 <thead className="bg-[#f1f5f9] text-secondary text-sm font-semibold" style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
                     <tr>
-                        <th className="p-4" style={{ padding: '1rem' }}>Auditor</th>
+                        <th className="p-4" style={{ padding: '1rem', cursor: 'pointer', userSelect: 'none' }} onClick={() => requestSort('auditorName')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                Auditor
+                                {sortConfig.key === 'auditorName' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : null}
+                            </div>
+                        </th>
                         <th className="p-4" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            Project
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', userSelect: 'none' }} onClick={() => requestSort('project')}>
+                                Project
+                                {sortConfig.key === 'project' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : null}
+                            </div>
                             <select
                                 value={selectedProject}
                                 onChange={(e) => setSelectedProject(e.target.value)}
@@ -122,7 +172,12 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                                 ))}
                             </select>
                         </th>
-                        <th className="p-4" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>Audit Start Date</th>
+                        <th className="p-4" style={{ padding: '1rem', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }} onClick={() => requestSort('auditStartDate')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                Audit Start Date
+                                {sortConfig.key === 'auditStartDate' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : null}
+                            </div>
+                        </th>
                         <th className="p-4" style={{ padding: '1rem' }}>Currency</th>
                         <th className="p-4" style={{ padding: '1rem' }}>Amount</th>
                         <th className="p-4" style={{ padding: '1rem' }}>FX Rate</th>
@@ -239,7 +294,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                         </td>
                     </tr>
 
-                    {filteredFees.map((fee) => (
+                    {sortedFees.map((fee) => (
                         <tr key={fee.id} className="hover:bg-background transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
                             <td className="p-4 font-medium text-main" style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-main)' }}>{fee.auditorName}</td>
                             <td className="p-4 text-secondary" style={{ padding: '1rem', color: 'var(--secondary)' }}>{fee.project}</td>
@@ -310,7 +365,7 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                             </td>
                         </tr>
                     ))}
-                    {filteredFees.length === 0 && (
+                    {sortedFees.length === 0 && (
                         <tr>
                             <td colSpan={14} className="p-8 text-center text-muted" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No audit fees found.</td>
                         </tr>
