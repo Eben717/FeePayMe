@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useAuditFees } from '../context/AuditFeeContext';
 import { AuditFeeRecord } from '../types/AuditFee';
@@ -30,6 +30,53 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
     const [newAmount, setNewAmount] = useState<number | ''>('');
     const [newFxRate, setNewFxRate] = useState<number | ''>('');
     const [newWhtRate, setNewWhtRate] = useState<number | ''>(7.5);
+
+    // Filter unique auditors from existing fees
+    const uniqueAuditors = useMemo(() => {
+        return Array.from(new Set(fees.map(fee => fee.auditorName))).sort();
+    }, [fees]);
+
+    // Filter unique projects from existing fees
+    const uniqueProjectsList = useMemo(() => {
+        return Array.from(new Set(fees.map(fee => fee.project))).sort();
+    }, [fees]);
+
+    // Drag to scroll logic
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+    const [startY, setStartY] = useState(0);
+    const [scrollTop, setScrollTop] = useState(0);
+
+    const onMouseDown = (e: React.MouseEvent) => {
+        if (!tableContainerRef.current) return;
+        setIsDragging(true);
+        setStartX(e.pageX - tableContainerRef.current.offsetLeft);
+        setScrollLeft(tableContainerRef.current.scrollLeft);
+        setStartY(e.pageY - tableContainerRef.current.offsetTop);
+        setScrollTop(tableContainerRef.current.scrollTop);
+    };
+
+    const onMouseLeave = () => {
+        setIsDragging(false);
+    };
+
+    const onMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const onMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging || !tableContainerRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - tableContainerRef.current.offsetLeft;
+        const walkX = (x - startX) * 2; // scroll-fast multiplier
+        tableContainerRef.current.scrollLeft = scrollLeft - walkX;
+
+        const y = e.pageY - tableContainerRef.current.offsetTop;
+        const walkY = (y - startY) * 2;
+        tableContainerRef.current.scrollTop = scrollTop - walkY;
+    };
 
     const handleAddFee = () => {
         if (!newAuditor || !newProject || newAmount === '' || newFxRate === '') {
@@ -135,7 +182,26 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
     };
 
     return (
-        <div className="overflow-x-auto w-full" style={{ width: '100%', overflowX: 'auto', backgroundColor: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <div
+            ref={tableContainerRef}
+            onMouseDown={onMouseDown}
+            onMouseLeave={onMouseLeave}
+            onMouseUp={onMouseUp}
+            onMouseMove={onMouseMove}
+            className="overflow-auto w-full"
+            style={{
+                width: '100%',
+                overflowX: 'auto',
+                overflowY: 'auto',
+                maxHeight: 'calc(100vh - 200px)',
+                backgroundColor: 'var(--surface)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                userSelect: isDragging ? 'none' : 'auto' // Prevent text selection while dragging
+            }}
+        >
             <table className="w-full text-left" style={{ width: '100%', minWidth: '1000px', borderCollapse: 'collapse' }}>
                 <thead className="bg-[#f1f5f9] text-secondary text-sm font-semibold" style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
                     <tr>
@@ -195,24 +261,40 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                     {/* Add New Record Row */}
                     <tr className="bg-[#f8fafc]" style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid var(--border)' }}>
                         <td className="p-4" style={{ padding: '1rem' }}>
-                            <input
-                                type="text"
-                                placeholder="Auditor Name"
-                                value={newAuditor}
-                                onChange={(e) => setNewAuditor(e.target.value)}
-                                className="w-full"
-                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    list="auditor-options"
+                                    placeholder="Select or type Auditor"
+                                    value={newAuditor}
+                                    onChange={(e) => setNewAuditor(e.target.value)}
+                                    className="w-full"
+                                    style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                                />
+                                <datalist id="auditor-options">
+                                    {uniqueAuditors.map(auditor => (
+                                        <option key={auditor} value={auditor} />
+                                    ))}
+                                </datalist>
+                            </div>
                         </td>
                         <td className="p-4" style={{ padding: '1rem' }}>
-                            <input
-                                type="text"
-                                placeholder="Project"
-                                value={newProject}
-                                onChange={(e) => setNewProject(e.target.value)}
-                                className="w-full"
-                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    list="project-options"
+                                    placeholder="Select or type Project"
+                                    value={newProject}
+                                    onChange={(e) => setNewProject(e.target.value)}
+                                    className="w-full"
+                                    style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                                />
+                                <datalist id="project-options">
+                                    {uniqueProjectsList.map(project => (
+                                        <option key={project} value={project} />
+                                    ))}
+                                </datalist>
+                            </div>
                         </td>
                         <td className="p-4" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                             <input
