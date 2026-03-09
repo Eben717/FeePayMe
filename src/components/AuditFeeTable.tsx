@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuditFees } from '../context/AuditFeeContext';
 import { AuditFeeRecord } from '../types/AuditFee';
+import SummaryModal from './SummaryModal';
 
 interface Props {
     onProcessPayment: (record: AuditFeeRecord) => void;
@@ -9,6 +10,7 @@ interface Props {
 const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
     const { fees, addFee, removeFee, updateFee } = useAuditFees();
     const [selectedProject, setSelectedProject] = useState<string>('All');
+    const [summaryRecord, setSummaryRecord] = useState<AuditFeeRecord | null>(null);
 
     // New Record State
     const [newAuditor, setNewAuditor] = useState('');
@@ -295,17 +297,32 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                                     >
                                         Delete
                                     </button>
+                                    <button
+                                        onClick={() => setSummaryRecord(fee)}
+                                        className="btn btn-outline btn-sm"
+                                        style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', border: '1px solid var(--info, #3b82f6)', color: 'var(--info, #3b82f6)', borderRadius: '0.375rem', cursor: 'pointer', background: 'transparent' }}
+                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'; }}
+                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                    >
+                                        Summary
+                                    </button>
                                 </div>
                             </td>
                         </tr>
                     ))}
                     {filteredFees.length === 0 && (
                         <tr>
-                            <td colSpan={7} className="p-8 text-center text-muted" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No audit fees found.</td>
+                            <td colSpan={14} className="p-8 text-center text-muted" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No audit fees found.</td>
                         </tr>
                     )}
                 </tbody>
             </table>
+
+            <SummaryModal
+                isOpen={!!summaryRecord}
+                onClose={() => setSummaryRecord(null)}
+                record={summaryRecord}
+            />
         </div>
     );
 };
