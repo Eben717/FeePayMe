@@ -12,6 +12,8 @@ interface AuditFeeContextType {
     addFee: (fee: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>) => void;
     removeFee: (id: string) => void;
     updateFee: (id: string, updates: Partial<AuditFeeRecord>) => void;
+    clearAllFees: () => void;
+    importFees: (newFees: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>[]) => void;
 }
 
 const AuditFeeContext = createContext<AuditFeeContextType | undefined>(undefined);
@@ -121,6 +123,29 @@ export const AuditFeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         setFees(prevFees => [applyAutoCalculations(newFee), ...prevFees]);
     };
 
+    const importFees = (newFees: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>[]) => {
+        const feesToAdd = newFees.map((feeInput, index) => {
+            const newFee: AuditFeeRecord = {
+                ...feeInput,
+                id: Date.now().toString() + index.toString(), // Ensure unique IDs during bulk import
+                paymentStatus: 'Pending',
+                payment70Status: 'Pending',
+                payment30Status: 'Pending',
+                cediEquivalent: 0,
+                withholdingTax: 0,
+                netPay: 0,
+            };
+            return applyAutoCalculations(newFee);
+        });
+
+        // Current implementation appends to existing list.
+        setFees(prevFees => [...feesToAdd, ...prevFees]);
+    };
+
+    const clearAllFees = () => {
+        setFees([]);
+    };
+
     const removeFee = (id: string) => {
         setFees(prevFees => prevFees.filter(fee => fee.id !== id));
     };
@@ -135,7 +160,7 @@ export const AuditFeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
 
     return (
-        <AuditFeeContext.Provider value={{ fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent, addFee, removeFee, updateFee }}>
+        <AuditFeeContext.Provider value={{ fees, pay70Percent, pay30Percent, unpay70Percent, unpay30Percent, addFee, removeFee, updateFee, clearAllFees, importFees }}>
             {children}
         </AuditFeeContext.Provider>
     );
