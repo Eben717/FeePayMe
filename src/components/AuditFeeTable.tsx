@@ -212,19 +212,34 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
 
                 const importedFees: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>[] = [];
 
-                data.forEach((row, index) => {
-                    // Try to map loosely typed Excel columns to our strict interface
-                    // Assumes headers like: Auditor, Project, Date, Currency, Amount, FX Rate, WHT (%)
-                    const auditor = row['Auditor Name'] || row['Auditor'] || row['auditorName'] || `Unknown Auditor ${index + 1}`;
-                    const project = row['Project'] || row['project'] || 'Unknown Project';
-                    let startDate = 'N/A';
-                    if (row['Audit Start Date']) startDate = row['Audit Start Date'];
-                    else if (row['Date']) startDate = row['Date'];
+                const parseNumber = (val: any, fallback: number) => {
+                    if (val === undefined || val === null || val === '') return fallback;
+                    const cleaned = String(val).replace(/[^0-9.-]/g, '');
+                    if (cleaned === '' || cleaned === '-') return fallback;
+                    const num = parseFloat(cleaned);
+                    return isNaN(num) ? fallback : num;
+                };
 
-                    const amount = parseFloat(row['Amount'] || row['totalAmountDue'] || 0);
-                    const fxRate = parseFloat(row['FX Rate'] || row['roe'] || 1);
-                    const whtRate = parseFloat(row['WHT Rate (%)'] || row['WHT Rate'] || row['whtRate'] || 7.5);
-                    const currency = row['Currency'] || row['currency'] || 'USD';
+                const getValue = (row: any, mapKeys: string[]) => {
+                    const rowKeys = Object.keys(row);
+                    for (const key of mapKeys) {
+                        const target = key.trim().toLowerCase();
+                        const found = rowKeys.find(k => k.trim().toLowerCase() === target);
+                        if (found) return row[found];
+                    }
+                    return undefined;
+                };
+
+                data.forEach((row, index) => {
+                    // Map generic Excel columns using robust fuzzy matching
+                    const auditor = getValue(row, ['Auditor Name', 'Auditor', 'auditorName']) || `Unknown Auditor ${index + 1}`;
+                    const project = getValue(row, ['Project', 'project', 'Project Name']) || 'Unknown Project';
+                    let startDate = String(getValue(row, ['Audit Start Date', 'Date', 'Start Date']) || 'N/A');
+
+                    const amount = parseNumber(getValue(row, ['Amount', 'Total Amount Due', 'Amount Due', 'Fee', 'Gross Amount', 'Total Amount']), 0);
+                    const fxRate = parseNumber(getValue(row, ['FX Rate', 'roe', 'Exchange Rate', 'Rate']), 1);
+                    const whtRate = parseNumber(getValue(row, ['WHT Rate (%)', 'WHT Rate', 'whtRate', 'WHT', 'Withholding Tax', 'WHT %', 'Tax']), 7.5);
+                    const currency = String(getValue(row, ['Currency', 'currency']) || 'USD');
 
                     importedFees.push({
                         auditMonth: new Date().toLocaleString('default', { month: 'long' }).toUpperCase(),
