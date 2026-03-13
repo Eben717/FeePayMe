@@ -15,6 +15,10 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
     const [summaryRecord, setSummaryRecord] = useState<AuditFeeRecord | null>(null);
     const [sortConfig, setSortConfig] = useState<{ key: keyof AuditFeeRecord | null, direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
 
+    // Excel Import State
+    const [pendingWorkbook, setPendingWorkbook] = useState<XLSX.WorkBook | null>(null);
+    const [selectedSheet, setSelectedSheet] = useState<string>('');
+
     const requestSort = (key: keyof AuditFeeRecord) => {
         let direction: 'asc' | 'desc' = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -201,87 +205,114 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
             try {
                 const bstr = evt.target?.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json<any>(ws, { raw: false }); // Force formatting as string so dates don't come back as numbers
-
-                if (data.length === 0) {
-                    alert('The uploaded Excel file appears to be empty.');
+                if (wb.SheetNames.length === 0) {
+                    alert('The uploaded Excel file appears to have no sheets.');
                     return;
                 }
-
-                const importedFees: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>[] = [];
-
-                const parseNumber = (val: any, fallback: number) => {
-                    if (val === undefined || val === null || val === '') return fallback;
-                    const cleaned = String(val).replace(/[^0-9.-]/g, '');
-                    if (cleaned === '' || cleaned === '-') return fallback;
-                    const num = parseFloat(cleaned);
-                    return isNaN(num) ? fallback : num;
-                };
-
-                const getValue = (row: any, mapKeys: string[]) => {
-                    const rowKeys = Object.keys(row);
-                    for (const key of mapKeys) {
-                        const target = key.trim().toLowerCase();
-                        const found = rowKeys.find(k => k.trim().toLowerCase() === target);
-                        if (found) return row[found];
-                    }
-                    return undefined;
-                };
-
-                data.forEach((row, index) => {
-                    // Map generic Excel columns using robust fuzzy matching
-                    const auditor = getValue(row, ['Auditor Name', 'Auditor', 'auditorName']) || `Unknown Auditor ${index + 1}`;
-                    const project = getValue(row, ['Project', 'project', 'Project Name']) || 'Unknown Project';
-                    let startDate = String(getValue(row, ['Audit Start Date', 'Date', 'Start Date']) || 'N/A');
-
-                    const amount = parseNumber(getValue(row, ['Amount', 'Total Amount Due', 'Amount Due', 'Fee', 'Gross Amount', 'Total Amount']), 0);
-                    const fxRate = parseNumber(getValue(row, ['FX Rate', 'roe', 'Exchange Rate', 'Rate']), 1);
-                    const whtRate = parseNumber(getValue(row, ['WHT Rate (%)', 'WHT Rate', 'whtRate', 'WHT', 'Withholding Tax', 'WHT %', 'Tax']), 7.5);
-                    const currency = String(getValue(row, ['Currency', 'currency']) || 'USD');
-
-                    importedFees.push({
-                        auditMonth: new Date().toLocaleString('default', { month: 'long' }).toUpperCase(),
-                        auditPeriod: new Date().toLocaleDateString('en-GB'),
-                        auditorName: auditor,
-                        project: project,
-                        serviceDescription: 'Audit',
-                        auditType: 'Routine',
-                        announcedUnannounced: 'Announced',
-                        auditStartDate: startDate,
-                        standard: 'N/A',
-                        locationType: 'Local',
-                        auditLocation: 'N/A',
-                        auditRate: 0,
-                        travelRate: 0,
-                        actualAuditDays: 0,
-                        actualTravelDays: 0,
-                        reportingDays: 0,
-                        sampleDays: 0,
-                        totalNoDays: 0,
-                        currency: currency,
-                        totalAmountDue: amount,
-                        roe: fxRate,
-                        contractNum: `IMP-${Date.now().toString().slice(-4)}-${index}`,
-                        whtRate: whtRate,
-                    });
-                });
-
-                importFees(importedFees);
-                alert(`Successfully imported ${importedFees.length} records from Excel!`);
-
-                // Reset file input
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                }
-
+                setPendingWorkbook(wb);
+                setSelectedSheet(wb.SheetNames[0]);
             } catch (error) {
-                console.error('Error importing Excel:', error);
+                console.error('Error reading Excel file:', error);
                 alert('There was an error reading the Excel file. Please ensure it is a valid spreadsheet format (.xlsx or .xls).');
+            } finally {
+                 // Reset file input so the same file can be selected again if cancelled
+                 if (fileInputRef.current) {
+                     fileInputRef.current.value = '';
+                 }
             }
         };
         reader.readAsBinaryString(file);
+    };
+
+    const handleImportSheet = () => {
+        if (!pendingWorkbook || !selectedSheet) return;
+
+        try {
+            const ws = pendingWorkbook.Sheets[selectedSheet];
+            const data = XLSX.utils.sheet_to_json<any>(ws, { raw: false }); // Force formatting as string
+
+            if (data.length === 0) {
+                alert(`The selected sheet "${selectedSheet}" appears to be empty.`);
+                setPendingWorkbook(null);
+                setSelectedSheet('');
+                return;
+            }
+
+            const importedFees: Omit<AuditFeeRecord, 'id' | 'paymentStatus' | 'payment70Status' | 'payment30Status' | 'cediEquivalent' | 'withholdingTax' | 'netPay'>[] = [];
+
+            const parseNumber = (val: any, fallback: number) => {
+                if (val === undefined || val === null || val === '') return fallback;
+                const cleaned = String(val).replace(/[^0-9.-]/g, '');
+                if (cleaned === '' || cleaned === '-') return fallback;
+                const num = parseFloat(cleaned);
+                return isNaN(num) ? fallback : num;
+            };
+
+            const getValue = (row: any, mapKeys: string[]) => {
+                const rowKeys = Object.keys(row);
+                for (const key of mapKeys) {
+                    const target = key.trim().toLowerCase();
+                    const found = rowKeys.find(k => k.trim().toLowerCase() === target);
+                    if (found) return row[found];
+                }
+                return undefined;
+            };
+
+            data.forEach((row, index) => {
+                // Map generic Excel columns using robust fuzzy matching
+                const auditor = getValue(row, ['Auditor Name', 'Auditor', 'auditorName']) || `Unknown Auditor ${index + 1}`;
+                const project = getValue(row, ['Project', 'project', 'Project Name']) || 'Unknown Project';
+                let startDate = String(getValue(row, ['Audit Start Date', 'Date', 'Start Date']) || 'N/A');
+
+                const amount = parseNumber(getValue(row, ['Amount', 'Total Amount Due', 'Amount Due', 'Fee', 'Gross Amount', 'Total Amount']), 0);
+                const fxRate = parseNumber(getValue(row, ['FX Rate', 'roe', 'Exchange Rate', 'Rate']), 1);
+                const whtRate = parseNumber(getValue(row, ['WHT Rate (%)', 'WHT Rate', 'whtRate', 'WHT', 'Withholding Tax', 'WHT %', 'Tax']), 7.5);
+                const currency = String(getValue(row, ['Currency', 'currency']) || 'USD');
+
+                importedFees.push({
+                    auditMonth: new Date().toLocaleString('default', { month: 'long' }).toUpperCase(),
+                    auditPeriod: new Date().toLocaleDateString('en-GB'),
+                    auditorName: auditor,
+                    project: project,
+                    serviceDescription: 'Audit',
+                    auditType: 'Routine',
+                    announcedUnannounced: 'Announced',
+                    auditStartDate: startDate,
+                    standard: 'N/A',
+                    locationType: 'Local',
+                    auditLocation: 'N/A',
+                    auditRate: 0,
+                    travelRate: 0,
+                    actualAuditDays: 0,
+                    actualTravelDays: 0,
+                    reportingDays: 0,
+                    sampleDays: 0,
+                    totalNoDays: 0,
+                    currency: currency,
+                    totalAmountDue: amount,
+                    roe: fxRate,
+                    contractNum: `IMP-${Date.now().toString().slice(-4)}-${index}`,
+                    whtRate: whtRate,
+                });
+            });
+
+            importFees(importedFees);
+            alert(`Successfully imported ${importedFees.length} records from sheet "${selectedSheet}"!`);
+
+            setPendingWorkbook(null);
+            setSelectedSheet('');
+
+        } catch (error) {
+            console.error('Error importing Excel sheet:', error);
+            alert('There was an error processing the selected sheet. Please ensure it is correctly formatted.');
+            setPendingWorkbook(null);
+            setSelectedSheet('');
+        }
+    };
+
+    const handleCancelImport = () => {
+        setPendingWorkbook(null);
+        setSelectedSheet('');
     };
 
     return (
@@ -295,16 +326,48 @@ const AuditFeeTable: React.FC<Props> = ({ onProcessPayment }) => {
                     ref={fileInputRef}
                     style={{ display: 'none' }}
                 />
-                <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="btn btn-outline btn-sm"
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', padding: '0.5rem 1rem', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '0.375rem', cursor: 'pointer', background: 'transparent', fontWeight: 500 }}
-                    onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-light)'; }}
-                    onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                >
-                    <Upload size={16} />
-                    Import Excel
-                </button>
+
+                {pendingWorkbook ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface-sunken, #f8fafc)', padding: '0.25rem 0.5rem', borderRadius: '0.375rem', border: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Select Sheet:</span>
+                        <select
+                            value={selectedSheet}
+                            onChange={(e) => setSelectedSheet(e.target.value)}
+                            style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.875rem', outline: 'none', background: 'var(--surface)' }}
+                        >
+                            {pendingWorkbook.SheetNames.map(name => (
+                                <option key={name} value={name}>{name}</option>
+                            ))}
+                        </select>
+                        <button
+                            onClick={handleImportSheet}
+                            className="btn btn-primary btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', border: 'none', backgroundColor: 'var(--primary)', color: 'white', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 600 }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-dark)'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--primary)'}
+                        >
+                            Confirm
+                        </button>
+                        <button
+                            onClick={handleCancelImport}
+                            className="btn btn-outline btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', border: '1px solid var(--error, #ef4444)', color: 'var(--error, #ef4444)', borderRadius: '0.375rem', cursor: 'pointer', background: 'transparent' }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="btn btn-outline btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', padding: '0.5rem 1rem', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '0.375rem', cursor: 'pointer', background: 'transparent', fontWeight: 500 }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-light)'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                    >
+                        <Upload size={16} />
+                        Import Excel
+                    </button>
+                )}
                 <button
                     onClick={handleClearAll}
                     disabled={fees.length === 0}
